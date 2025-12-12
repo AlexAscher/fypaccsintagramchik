@@ -4544,7 +4544,7 @@ Please contact @fypacc for assistance."""
             )
 
             # Создаем txt файл с аккаунтами
-            header_text = "Attention, log into your account only from the proxy of the country whose account you purchased.\nFormat\nlogin:password:email\n\n"
+            header_text = "Recommended warmup: 7 days\nRecommended proxies to use: HQ mobile 4g/5g\n\nFormat\nlogin:password:email:emailpassword\n\n"
             file_content = header_text + "\n".join(account_data)
             filename = f"instagram_accounts_{quantity}.txt"
 
