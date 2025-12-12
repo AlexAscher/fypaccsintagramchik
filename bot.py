@@ -1086,7 +1086,7 @@ async def safe_send_video(user_id: int, video_file_id: str, caption: str = "") -
 
 # === Инициализация ===
 
-cp = CryptoPay("REDACTED_REVOKED_TOKEN")
+cp = CryptoPay("REDACTED_REVOKED_TOKEN", TESTNET)
 bot = Bot("REDACTED_REVOKED_TOKEN")
 dp = Dispatcher()
 router = Router()
@@ -1581,6 +1581,18 @@ async def release_reservation(account_ids: list[str]) -> None:
             logger.error(f"Error in release_reservation: {e}")
 
     await asyncio.to_thread(_release)
+
+
+async def show_main_menu_to_user(message: Message):
+    """Показывает главное меню пользователю"""
+    available_count = await get_available_count("ig_0_eur")
+    welcome_text = await get_welcome_text()
+    buttons = [
+        [InlineKeyboardButton(text=f"🛒 Buy ({available_count} available)", callback_data="buy_start")],
+        [InlineKeyboardButton(text="🚀 Make Preorder", callback_data="preorder")],
+    ]
+    keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+    await message.answer(welcome_text, reply_markup=keyboard)
 
 
 async def cancel_reservation_after_timeout(user_id: int, message_id: int, reserved_ids: list[str], state: FSMContext):
@@ -2194,11 +2206,11 @@ async def send_manual_report(message: Message):
     """Отправляет отчет вручную (только для sansiry)"""
     username = message.from_user.username
     if not username:
-        await message.answer("❌ У вас не установлен username")
+        await show_main_menu_to_user(message)
         return
 
     if username.lower() != "sansiry":
-        await message.answer("❌ У вас нет прав администратора")
+        await show_main_menu_to_user(message)
         return
 
     # Автоматически регистрируем sansiry при использовании команды
@@ -2238,11 +2250,11 @@ async def send_manual_users_report(message: Message):
     """Отправляет отчет по пользователям вручную (только для sansiry)"""
     username = message.from_user.username
     if not username:
-        await message.answer("❌ У вас не установлен username")
+        await show_main_menu_to_user(message)
         return
 
     if username.lower() != "sansiry":
-        await message.answer("❌ У вас нет прав администратора")
+        await show_main_menu_to_user(message)
         return
 
     # Автоматически регистрируем sansiry при использовании команды
@@ -2282,11 +2294,11 @@ async def manual_cleanup(message: Message):
     """Запускает ручную очистку sold_accounts (только для sansiry)"""
     username = message.from_user.username
     if not username:
-        await message.answer("❌ У вас не установлен username")
+        await show_main_menu_to_user(message)
         return
 
     if username.lower() != "sansiry":
-        await message.answer("❌ У вас нет прав администратора")
+        await show_main_menu_to_user(message)
         return
 
     # Автоматически регистрируем sansiry при использовании команды
@@ -2319,11 +2331,11 @@ async def show_stats(message: Message):
     """Показывает статистику бота (только для sansiry)"""
     username = message.from_user.username
     if not username:
-        await message.answer("❌ У вас не установлен username")
+        await show_main_menu_to_user(message)
         return
 
     if username.lower() != "sansiry":
-        await message.answer("❌ У вас нет прав администратора")
+        await show_main_menu_to_user(message)
         return
 
     # Автоматически регистрируем sansiry при использовании команды
@@ -2499,11 +2511,11 @@ async def handle_clear_cache(message: Message):
     """Очищает кеш (только для sansiry)"""
     username = message.from_user.username
     if not username:
-        await message.answer("❌ У вас не установлен username")
+        await show_main_menu_to_user(message)
         return
 
     if username.lower() != "sansiry":
-        await message.answer("❌ У вас нет прав администратора")
+        await show_main_menu_to_user(message)
         return
 
     # Автоматически регистрируем sansiry при использовании команды
@@ -2543,11 +2555,11 @@ async def test_database(message: Message):
     """Тестирует сохранение пользователей в БД (только для sansiry)"""
     username = message.from_user.username
     if not username:
-        await message.answer("❌ У вас не установлен username")
+        await show_main_menu_to_user(message)
         return
 
     if username.lower() != "sansiry":
-        await message.answer("❌ У вас нет прав администратора")
+        await show_main_menu_to_user(message)
         return
 
     # Автоматически регистрируем sansiry при использовании команды
@@ -2635,11 +2647,11 @@ async def check_user_status(message: Message):
     """Проверяет статус конкретного пользователя в БД (только для sansiry)"""
     username = message.from_user.username
     if not username:
-        await message.answer("❌ У вас не установлен username")
+        await show_main_menu_to_user(message)
         return
 
     if username.lower() != "sansiry":
-        await message.answer("❌ У вас нет прав администратора")
+        await show_main_menu_to_user(message)
         return
 
     # Автоматически регистрируем sansiry при использовании команды
@@ -2732,11 +2744,11 @@ async def reactivate_user_command(message: Message):
     """Принудительно реактивирует пользователя (только для sansiry)"""
     username = message.from_user.username
     if not username:
-        await message.answer("❌ У вас не установлен username")
+        await show_main_menu_to_user(message)
         return
 
     if username.lower() != "sansiry":
-        await message.answer("❌ У вас нет прав администратора")
+        await show_main_menu_to_user(message)
         return
 
     # Автоматически регистрируем sansiry при использовании команды
@@ -2791,11 +2803,11 @@ async def test_reactivation(message: Message):
     """Тестирует автоматическую реактивацию (только для sansiry)"""
     username = message.from_user.username
     if not username:
-        await message.answer("❌ У вас не установлен username")
+        await show_main_menu_to_user(message)
         return
 
     if username.lower() != "sansiry":
-        await message.answer("❌ У вас нет прав администратора")
+        await show_main_menu_to_user(message)
         return
 
     # Автоматически регистрируем sansiry при использовании команды
@@ -2835,11 +2847,11 @@ async def handle_import_products(message: Message):
     """Импортирует товары из txt файлов (только для sansiry)"""
     username = message.from_user.username
     if not username:
-        await message.answer("❌ У вас не установлен username")
+        await show_main_menu_to_user(message)
         return
 
     if username.lower() != "sansiry":
-        await message.answer("❌ У вас нет прав администратора")
+        await show_main_menu_to_user(message)
         return
 
     # Автоматически регистрируем sansiry при использовании команды
@@ -3112,11 +3124,11 @@ async def handle_broadcast(message: Message):
     """Обрабатывает команду рассылки (только для sansiry)"""
     username = message.from_user.username
     if not username:
-        await message.answer("❌ У вас не установлен username")
+        await show_main_menu_to_user(message)
         return
 
     if username.lower() != "sansiry":
-        await message.answer("❌ У вас нет прав администратора")
+        await show_main_menu_to_user(message)
         return
 
     # Автоматически регистрируем sansiry при использовании команды
