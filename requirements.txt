@@ -1,0 +1,17 @@
+# Telegram Bot Framework
+aiogram==3.15.0
+
+# Database
+pocketbase==0.12.1
+
+# Crypto Payment
+aiosend==1.1.6
+
+# Scheduling
+schedule==1.2.2
+
+# HTTP Requests
+requests==2.32.3
+
+# Date/Time utilities (usually included in Python, but explicit is better)
+python-dateutil==2.9.0

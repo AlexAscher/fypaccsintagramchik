@@ -15,7 +15,6 @@ import schedule
 import threading
 import os
 import traceback
-from functools import lru_cache
 from typing import Optional, List, Dict, Tuple
 import requests
 import glob
@@ -1087,7 +1086,7 @@ async def safe_send_video(user_id: int, video_file_id: str, caption: str = "") -
 
 # === Инициализация ===
 
-cp = CryptoPay("REDACTED_REVOKED_TOKEN", TESTNET)
+cp = CryptoPay("REDACTED_REVOKED_TOKEN")
 bot = Bot("REDACTED_REVOKED_TOKEN")
 dp = Dispatcher()
 router = Router()
@@ -1389,14 +1388,11 @@ def clear_cache():
     global _categories_cache, _cache_timestamp
     _categories_cache = None
     _cache_timestamp = None
-    _get_available_count_cached.cache_clear()
     logger.info("Cache cleared successfully")
 
 
 def get_cache_info() -> Dict[str, any]:
     """Возвращает информацию о состоянии кеша"""
-    cache_info = _get_available_count_cached.cache_info()
-
     # Проверяем, актуален ли кэш категорий
     cache_is_valid = False
     cache_age = None
@@ -1409,64 +1405,287 @@ def get_cache_info() -> Dict[str, any]:
         'categories_cached': _categories_cache is not None and cache_is_valid,
         'cache_age_seconds': cache_age,
         'cache_is_expired': cache_age > CACHE_TTL if cache_age else False,
-        'cache_ttl': CACHE_TTL,
-        'product_cache_hits': cache_info.hits,
-        'product_cache_misses': cache_info.misses,
-        'product_cache_size': cache_info.currsize,
-        'product_cache_maxsize': cache_info.maxsize
+        'cache_ttl': CACHE_TTL
     }
 
 
-# === Получение количества доступного товара с кешированием ===
-@lru_cache(maxsize=256)
-def _get_available_count_cached(product_key: str, cache_key: int) -> int:
-    """Внутренняя функция для кеширования количества товаров"""
-    try:
-        # Сначала пробуем найти по ключу продукта (новая структура)
+# === Получение welcome текста из БД ===
+async def get_welcome_text() -> str:
+    """Получает текст приветствия из description подкатегории продукта ig_0_eur"""
+
+    def get_text():
+        try:
+            # Получаем продукт ig_0_eur
+            products = pb.collection("products").get_full_list()
+            product = next((p for p in products if p.key == "ig_0_eur"), None)
+            if product:
+                # Получаем подкатегорию
+                subcats = pb.collection("subcategories").get_full_list()
+                subcat = next((s for s in subcats if s.id == product.subcategory), None)
+                if subcat and hasattr(subcat, 'description') and subcat.description:
+                    return subcat.description
+        except Exception as e:
+            logger.error(f"Ошибка получения welcome текста из БД: {e}")
+
+        # Fallback на дефолтный текст
+        return """👋 Welcome!
+
+🔥 Instagram «30 days of rest» Accounts
+
+All accounts are registered on genuine iPhones (non-jailbreak) with REAL SIM CARDS and premium mobile proxies.
+
+📱 CLEAN PHONE NUMBER VERIFICATION."""
+
+    return await asyncio.to_thread(get_text)
+
+
+# === Получение количества доступного товара ===
+async def get_available_count(product_key: str = "ig_0_eur") -> int:
+    """Получает количество доступного товара без кеширования для точности"""
+
+    def _get_count():
+        try:
+            # Сначала пробуем найти по ключу продукта (новая структура)
+            try:
+                products = pb.collection("products").get_full_list()
+                product = next((p for p in products if p.key == product_key), None)
+                if product:
+                    # Считаем непроданные и незарезервированные аккаунты для этого продукта
+                    accounts = pb.collection("accounts").get_full_list()
+                    now = datetime.now()
+                    available_accounts = []
+                    for a in accounts:
+                        if a.product != product.id or getattr(a, 'sold', False):
+                            continue
+
+                        # Проверяем резервацию
+                        if hasattr(a, 'reserved_until') and a.reserved_until:
+                            try:
+                                reserved_until = datetime.fromisoformat(
+                                    a.reserved_until.replace('Z', '+00:00').replace('+00:00', ''))
+                                # Если резервация еще активна - пропускаем
+                                if reserved_until > now:
+                                    continue
+                            except:
+                                pass  # Если не можем распарсить - считаем доступным
+
+                        available_accounts.append(a)
+
+                    return len(available_accounts)
+            except Exception:
+                pass
+
+            # Если не нашли или коллекция products не существует, пробуем старую структуру
+            # Извлекаем subcategory_key из product_key
+            if "_default" in product_key:
+                subcategory_key = product_key.replace("_default", "")
+            else:
+                subcategory_key = product_key
+
+            subcats = pb.collection("subcategories").get_full_list()
+            subcat = next((s for s in subcats if s.key == subcategory_key), None)
+            if not subcat:
+                return 0
+
+            # Считаем непроданные аккаунты в этой подкатегории (старая структура)
+            accounts = pb.collection("accounts").get_full_list()
+            available_accounts = [a for a in accounts if
+                                  hasattr(a, 'subcategory') and a.subcategory == subcat.id and not getattr(a, 'sold',
+                                                                                                           False)]
+            return len(available_accounts)
+
+        except Exception as e:
+            logger.error(f"Error counting products for {product_key}: {e}")
+            return 0
+
+    return await asyncio.to_thread(_get_count)
+
+
+# === Резервация аккаунтов ===
+async def reserve_accounts(product_key: str, quantity: int) -> tuple[list[str], str]:
+    """
+    Резервирует указанное количество аккаунтов на 10 минут.
+    Возвращает (список ID зарезервированных аккаунтов, ошибка если есть)
+    """
+
+    def _reserve():
         try:
             products = pb.collection("products").get_full_list()
             product = next((p for p in products if p.key == product_key), None)
-            if product:
-                # Считаем непроданные аккаунты для этого продукта
-                accounts = pb.collection("accounts").get_full_list()
-                available_accounts = [a for a in accounts if
-                                      a.product == product.id and not getattr(a, 'sold', False)]
-                return len(available_accounts)
-        except Exception:
-            pass
+            if not product:
+                return None, "Product not found"
 
-        # Если не нашли или коллекция products не существует, пробуем старую структуру
-        # Извлекаем subcategory_key из product_key
-        if "_default" in product_key:
-            subcategory_key = product_key.replace("_default", "")
-        else:
-            subcategory_key = product_key
+            # Получаем доступные аккаунты (непроданные и незарезервированные)
+            accounts = pb.collection("accounts").get_full_list()
+            now = datetime.now()
+            available_accounts = []
+            for a in accounts:
+                if a.product != product.id or getattr(a, 'sold', False):
+                    continue
 
-        subcats = pb.collection("subcategories").get_full_list()
-        subcat = next((s for s in subcats if s.key == subcategory_key), None)
-        if not subcat:
-            return 0
+                # Проверяем резервацию
+                if hasattr(a, 'reserved_until') and a.reserved_until:
+                    try:
+                        reserved_until_dt = datetime.fromisoformat(
+                            a.reserved_until.replace('Z', '+00:00').replace('+00:00', ''))
+                        # Если резервация еще активна - пропускаем
+                        if reserved_until_dt > now:
+                            continue
+                    except:
+                        pass  # Если не можем распарсить - считаем доступным
 
-        # Считаем непроданные аккаунты в этой подкатегории (старая структура)
-        accounts = pb.collection("accounts").get_full_list()
-        available_accounts = [a for a in accounts if
-                              hasattr(a, 'subcategory') and a.subcategory == subcat.id and not getattr(a, 'sold',
-                                                                                                       False)]
-        return len(available_accounts)
+                available_accounts.append(a)
+                if len(available_accounts) >= quantity:
+                    break
 
+            if len(available_accounts) < quantity:
+                return None, f"Not enough accounts available. Found: {len(available_accounts)}, needed: {quantity}"
+
+            # Резервируем аккаунты на 10 минут
+            reserved_until = (datetime.now() + timedelta(minutes=10)).isoformat()
+            reserved_ids = []
+
+            for account in available_accounts:
+                try:
+                    pb.collection("accounts").update(account.id, {"reserved_until": reserved_until})
+                    reserved_ids.append(account.id)
+                except Exception as e:
+                    logger.error(f"Error reserving account {account.id}: {e}")
+                    # Откатываем уже зарезервированные
+                    for rid in reserved_ids:
+                        try:
+                            pb.collection("accounts").update(rid, {"reserved_until": ""})
+                        except:
+                            pass
+                    return None, f"Failed to reserve accounts: {e}"
+
+            return reserved_ids, None
+        except Exception as e:
+            logger.error(f"Error in reserve_accounts: {e}")
+            return None, str(e)
+
+    return await asyncio.to_thread(_reserve)
+
+
+async def release_reservation(account_ids: list[str]) -> None:
+    """Снимает резервацию с указанных аккаунтов"""
+
+    def _release():
+        try:
+            for account_id in account_ids:
+                try:
+                    pb.collection("accounts").update(account_id, {"reserved_until": ""})
+                except Exception as e:
+                    logger.error(f"Error releasing reservation for {account_id}: {e}")
+        except Exception as e:
+            logger.error(f"Error in release_reservation: {e}")
+
+    await asyncio.to_thread(_release)
+
+
+async def cancel_reservation_after_timeout(user_id: int, message_id: int, reserved_ids: list[str], state: FSMContext):
+    """Отменяет резервацию через 10 минут и обновляет сообщение"""
+    await asyncio.sleep(600)  # Ждем 10 минут
+
+    try:
+        # Проверяем, не оплатил ли пользователь за это время
+        state_data = await state.get_data()
+        current_reserved = state_data.get("reserved_account_ids", [])
+
+        # Если резервация все еще активна (не оплачена)
+        if current_reserved == reserved_ids:
+            # Снимаем резервацию
+            await release_reservation(reserved_ids)
+
+            # Очищаем state
+            await state.clear()
+
+            # Обновляем сообщение
+            try:
+                await bot.edit_message_text(
+                    chat_id=user_id,
+                    message_id=message_id,
+                    text="⏰ Reservation cancelled. Please try to purchase again.",
+                    reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                        [InlineKeyboardButton(text="🔄 Try Again", callback_data="buy_start")]
+                    ])
+                )
+            except Exception as e:
+                logger.error(f"Error updating message after reservation timeout: {e}")
     except Exception as e:
-        logger.error(f"Error counting products for {product_key}: {e}")
-        return 0
+        logger.error(f"Error in cancel_reservation_after_timeout: {e}")
 
 
-async def get_available_count(product_key: str) -> int:
-    """Получает количество доступного товара с кешированием"""
-    # Используем текущую минуту как ключ кеширования (обновление каждую минуту)
-    cache_key = int(datetime.now().timestamp() // 60)
+async def update_available_count_live(user_id: int, message_id: int, product_key: str, state: FSMContext):
+    """Обновляет счетчик доступных аккаунтов каждую минуту"""
+    last_count = None
 
-    # Выполняем в отдельном потоке с кешированием
-    count = await asyncio.to_thread(_get_available_count_cached, product_key, cache_key)
-    return count
+    # Обновляем 10 раз (каждую минуту в течение 10 минут)
+    for _ in range(10):
+        await asyncio.sleep(60)  # Ждем 1 минуту
+
+        try:
+            # Проверяем, не перешел ли пользователь в другое состояние
+            current_state = await state.get_state()
+            if current_state != ShopState.QUANTITY_INPUT.state:
+                break  # Пользователь ушел с экрана ввода количества
+
+            # Получаем текущее количество
+            current_count = await get_available_count(product_key)
+
+            # Обновляем только если количество изменилось
+            if current_count != last_count:
+                last_count = current_count
+
+                message_text = f"""📦 We have {current_count} accounts available right now
+
+💬 Please enter the quantity you want to purchase
+
+⚡️ Accounts will be delivered immediately after payment!"""
+
+                try:
+                    await bot.edit_message_text(
+                        chat_id=user_id,
+                        message_id=message_id,
+                        text=message_text
+                    )
+                except Exception as e:
+                    # Если не можем обновить (сообщение удалено и т.д.) - прерываем
+                    logger.error(f"Error updating available count: {e}")
+                    break
+        except Exception as e:
+            logger.error(f"Error in update_available_count_live: {e}")
+            break
+
+
+# === Получение welcome текста из БД ===
+async def get_welcome_text() -> str:
+    """Получает текст приветствия из description подкатегории продукта ig_0_eur"""
+
+    def get_text():
+        try:
+            # Получаем продукт ig_0_eur
+            products = pb.collection("products").get_full_list()
+            product = next((p for p in products if p.key == "ig_0_eur"), None)
+            if product:
+                # Получаем подкатегорию
+                subcats = pb.collection("subcategories").get_full_list()
+                subcat = next((s for s in subcats if s.id == product.subcategory), None)
+                if subcat and hasattr(subcat, 'description') and subcat.description:
+                    return subcat.description
+        except Exception as e:
+            logger.error(f"Ошибка получения welcome текста из БД: {e}")
+
+        # Fallback на дефолтный текст
+        return """👋 Welcome!
+
+🔥 Instagram «30 days of rest» Accounts
+
+All accounts are registered on genuine iPhones (non-jailbreak) with REAL SIM CARDS and premium mobile proxies.
+
+📱 CLEAN PHONE NUMBER VERIFICATION."""
+
+    return await asyncio.to_thread(get_text)
 
 
 # === Batch получение количества товаров для оптимизации ===
@@ -1521,7 +1740,7 @@ async def get_all_product_counts(product_keys: List[str]) -> Dict[str, int]:
 
 
 # === Резервирование и доставка аккаунтов ===
-async def reserve_and_deliver_accounts(product_key: str, quantity: int, user_id: int):
+async def reserve_and_deliver_accounts(product_key: str, quantity: int, user_id: int, reserved_ids: list[str] = None):
     def process_accounts():
         try:
             print(f"Looking for product: {product_key}")
@@ -1532,10 +1751,34 @@ async def reserve_and_deliver_accounts(product_key: str, quantity: int, user_id:
                 product = next((p for p in products if p.key == product_key), None)
                 if product:
                     print(f"Found product in new structure: {product.id}")
-                    # Находим доступные аккаунты для этого продукта
-                    accounts = pb.collection("accounts").get_full_list()
-                    available_accounts = [a for a in accounts if
-                                          a.product == product.id and not getattr(a, 'sold', False)][:quantity]
+
+                    # Если есть зарезервированные IDs - используем их, иначе ищем доступные
+                    if reserved_ids:
+                        accounts = pb.collection("accounts").get_full_list()
+                        available_accounts = [a for a in accounts if a.id in reserved_ids][:quantity]
+                    else:
+                        # Находим доступные незарезервированные аккаунты для этого продукта
+                        accounts = pb.collection("accounts").get_full_list()
+                        now = datetime.now()
+                        available_accounts = []
+                        for a in accounts:
+                            if a.product != product.id or getattr(a, 'sold', False):
+                                continue
+
+                            # Проверяем резервацию
+                            if hasattr(a, 'reserved_until') and a.reserved_until:
+                                try:
+                                    reserved_until_dt = datetime.fromisoformat(
+                                        a.reserved_until.replace('Z', '+00:00').replace('+00:00', ''))
+                                    # Если резервация еще активна - пропускаем
+                                    if reserved_until_dt > now:
+                                        continue
+                                except:
+                                    pass  # Если не можем распарсить - считаем доступным
+
+                            available_accounts.append(a)
+                            if len(available_accounts) >= quantity:
+                                break
 
                     print(f"Found {len(available_accounts)} available accounts")
 
@@ -1828,33 +2071,24 @@ async def start(message: Message, state: FSMContext):
         logger.info(f"sansiry automatically registered with chat_id: {message.chat.id}")
 
     await state.set_state(ShopState.MAIN)
+
+    # Получаем количество доступных аккаунтов и текст приветствия из БД
     try:
-        categories = await get_all_categories()
-        logger.debug(f"Категории получены: {[cat.key for cat in categories]}")
+        available_count = await get_available_count("ig_0_eur")
     except Exception as e:
-        logger.error(f"Ошибка получения категорий: {e}")
-        await message.answer("Ошибка получения категорий.")
-        return
+        logger.error(f"Ошибка получения количества: {e}")
+        available_count = 0
 
-    # Создаем кнопки с количеством товаров
-    buttons = []
-    for cat in categories:
-        total_count = await get_category_total_count(cat)
-        if total_count > 0:
-            button_text = f"{cat.name} ({total_count} items)"
-        else:
-            button_text = f"{cat.name} (0 Available)"
-        buttons.append([InlineKeyboardButton(text=button_text, callback_data=cat.key)])
+    # Получаем текст приветствия из БД
+    welcome_text = await get_welcome_text()
 
-    if not buttons:
-        await message.answer("❌ No categories available.")
-        return
-
-    # Добавляем кнопку Make Preorder
-    buttons.append([InlineKeyboardButton(text="🚀 Make Preorder", callback_data="preorder")])
+    buttons = [
+        [InlineKeyboardButton(text=f"🛒 Buy ({available_count} available)", callback_data="buy_start")],
+        [InlineKeyboardButton(text="🚀 Make Preorder", callback_data="preorder")],
+    ]
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
-    await message.answer("Please select the account category you want to purchase 🔥", reply_markup=keyboard)
+    await message.answer(welcome_text, reply_markup=keyboard)
 
 
 # === КОМАНДА ДЛЯ ПОЛУЧЕНИЯ CHAT_ID ===
@@ -1934,34 +2168,24 @@ async def show_menu(message: Message, state: FSMContext):
         logger.info(f"sansiry automatically registered with chat_id: {message.chat.id}")
 
     await state.set_state(ShopState.MAIN)
+
+    # Получаем количество доступных аккаунтов и текст приветствия из БД
     try:
-        categories = await get_all_categories()
-        logger.debug(f"Категории получены: {[cat.key for cat in categories]}")
+        available_count = await get_available_count("ig_0_eur")
     except Exception as e:
-        logger.error(f"Ошибка получения категорий: {e}")
-        await message.answer("Ошибка получения категорий.")
-        return
+        logger.error(f"Ошибка получения количества: {e}")
+        available_count = 0
 
-    # Создаем кнопки с количеством товаров
-    buttons = []
-    for cat in categories:
-        total_count = await get_category_total_count(cat)
-        if total_count > 0:
-            button_text = f"{cat.name} ({total_count} items)"
-        else:
-            button_text = f"{cat.name} (0 Available)"
-        buttons.append([InlineKeyboardButton(text=button_text, callback_data=cat.key)])
+    # Получаем текст приветствия из БД
+    welcome_text = await get_welcome_text()
 
-    if not buttons:
-        await message.answer("❌ No categories available.")
-        return
-
-    # Добавляем кнопку Make Preorder
-    buttons.append([InlineKeyboardButton(text="🚀 Make Preorder", callback_data="preorder")])
+    buttons = [
+        [InlineKeyboardButton(text=f"🛒 Buy ({available_count} available)", callback_data="buy_start")],
+        [InlineKeyboardButton(text="🚀 Make Preorder", callback_data="preorder")],
+    ]
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
-    await message.answer("Please select the account category you want to purchase 🔥",
-                         reply_markup=keyboard)
+    await message.answer(welcome_text, reply_markup=keyboard)
 
 
 # === КОМАНДА ДЛЯ РУЧНОЙ ОТПРАВКИ ОТЧЕТА ===
@@ -3148,9 +3372,9 @@ async def send_subcategory_menu(callback: CallbackQuery, category_key: str, stat
         categories = await get_all_categories()
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text=cat.name, callback_data=cat.key)]
-                for cat in categories
-            ] + [[InlineKeyboardButton(text="🚀 Make Preorder", callback_data="preorder")]]
+                                [InlineKeyboardButton(text=cat.name, callback_data=cat.key)]
+                                for cat in categories
+                            ] + [[InlineKeyboardButton(text="🚀 Make Preorder", callback_data="preorder")]]
         )
         try:
             await callback.message.edit_text("Please select the account category you want to purchase 🔥",
@@ -3347,32 +3571,25 @@ async def send_region_menu(callback: CallbackQuery, category_key: str, subcatego
 
 # === Функция для создания главного меню с количеством товаров ===
 async def start_menu_with_counts(callback: CallbackQuery):
-    """Создает главное меню с количеством товаров в каждой категории"""
-    categories = await get_all_categories()
+    """Создает главное меню"""
+    # Получаем количество доступных аккаунтов и текст приветствия из БД
+    try:
+        available_count = await get_available_count("ig_0_eur")
+    except Exception as e:
+        logger.error(f"Ошибка получения количества: {e}")
+        available_count = 0
 
-    buttons = []
-    for cat in categories:
-        total_count = await get_category_total_count(cat)
-        if total_count > 0:
-            button_text = f"{cat.name} ({total_count} items)"
-        else:
-            button_text = f"{cat.name} (0 Available)"
-        buttons.append([InlineKeyboardButton(text=button_text, callback_data=cat.key)])
+    # Получаем текст приветствия из БД
+    welcome_text = await get_welcome_text()
 
-    if not buttons:
-        try:
-            await callback.message.edit_text("❌ No categories available.")
-        except TelegramBadRequest:
-            pass
-        return
-
-    # Добавляем кнопку Make Preorder
-    buttons.append([InlineKeyboardButton(text="🚀 Make Preorder", callback_data="preorder")])
+    buttons = [
+        [InlineKeyboardButton(text=f"🛒 Buy ({available_count} available)", callback_data="buy_start")],
+        [InlineKeyboardButton(text="🚀 Make Preorder", callback_data="preorder")],
+    ]
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     try:
-        await callback.message.edit_text("Please select the account category you want to purchase 🔥",
-                                         reply_markup=keyboard)
+        await callback.message.edit_text(welcome_text, reply_markup=keyboard)
     except TelegramBadRequest:
         pass
 
@@ -3467,6 +3684,44 @@ async def category_callback(callback: CallbackQuery, state: FSMContext):
 
     data = callback.data
 
+    # === Обработка кнопки Buy ===
+    if data == "buy_start":
+        product_key = "ig_0_eur"
+
+        # Получаем количество доступных аккаунтов
+        try:
+            available_count = await get_available_count(product_key)
+
+            message_text = f"""📦 We have {available_count} accounts available right now
+
+💬 Please enter the quantity you want to purchase
+
+⚡️ Accounts will be delivered immediately after payment!"""
+
+            edited_msg = await callback.message.edit_text(message_text)
+
+            # Переходим в режим ввода количества
+            await state.set_state(ShopState.QUANTITY_INPUT)
+            await state.update_data(
+                product=product_key
+            )
+
+            # Запускаем фоновое обновление счетчика каждую минуту
+            asyncio.create_task(update_available_count_live(
+                user_id=callback.from_user.id,
+                message_id=edited_msg.message_id,
+                product_key=product_key,
+                state=state
+            ))
+
+            await callback.answer()
+            return
+
+        except Exception as e:
+            logger.error(f"Ошибка при обработке Buy: {e}")
+            await callback.answer("❌ Error loading product info", show_alert=True)
+            return
+
     if data == "back_to_shop":
         await state.set_state(ShopState.MAIN)
         await start_menu_with_counts(callback)
@@ -3477,49 +3732,46 @@ async def category_callback(callback: CallbackQuery, state: FSMContext):
         current_state = await state.get_state()
 
         if current_state == ShopState.PRODUCT.state:
-            # Возвращаемся к вводу количества
-            ctx = await state.get_data()
-            product_key = ctx.get("product")
+            # Снимаем резервацию перед возвратом
+            state_data = await state.get_data()
+            reserved_ids = state_data.get("reserved_account_ids", [])
+            if reserved_ids:
+                await release_reservation(reserved_ids)
+
+            # Возвращаемся к сообщению о вводе количества
+            product_key = "ig_0_eur"
             await state.set_state(ShopState.QUANTITY_INPUT)
-            await show_product(callback, product_key, state)
+
+            available_count = await get_available_count(product_key)
+
+            message_text = f"""📦 We have {available_count} accounts available right now
+
+💬 Please enter the quantity you want to purchase
+
+⚡️ Accounts will be delivered immediately after payment!"""
+
+            try:
+                await callback.message.edit_text(message_text)
+            except:
+                pass
 
         elif current_state == ShopState.QUANTITY_INPUT.state:
-            # Проверяем, нужно ли восстановить сообщение о продукте
-            if callback.message.text.startswith("❌"):
-                # Это сообщение об ошибке, восстанавливаем исходное сообщение о продукте
-                await restore_product_message(callback, state)
-            else:
-                # Обычный возврат к выбору региона
-                ctx = await state.get_data()
-                category_key = ctx.get("category")
-                subcategory_key = ctx.get("subcategory")
-
-                # Если есть данные о регионе, возвращаемся к выбору региона
-                if subcategory_key:
-                    await state.set_state(ShopState.REGION)
-                    await send_region_menu(callback, category_key, subcategory_key, state)
-                else:
-                    await state.set_state(ShopState.SUBCATEGORY)
-                    await send_subcategory_menu(callback, category_key, state)
+            # Возвращаемся к главному меню
+            await state.set_state(ShopState.MAIN)
+            await start_menu_with_counts(callback)
 
         elif current_state == ShopState.REGION.state:
-            ctx = await state.get_data()
-            category_key = ctx.get("category")
-
-            # Получаем категорию для проверки количества подкатегорий
-            categories = await get_all_categories()
-            category = next((cat for cat in categories if cat.key == category_key), None)
-
-            # Если в категории только одна подкатегория, возвращаемся к главному меню
-            if category and len(category.subcategories) == 1:
-                await state.set_state(ShopState.MAIN)
-                await start_menu_with_counts(callback)
-            else:
-                # Если подкатегорий несколько, возвращаемся к меню подкатегорий
-                await state.set_state(ShopState.SUBCATEGORY)
-                await send_subcategory_menu(callback, category_key, state)
+            # Возвращаемся к главному меню
+            await state.set_state(ShopState.MAIN)
+            await start_menu_with_counts(callback)
 
         elif current_state == ShopState.SUBCATEGORY.state:
+            # Возвращаемся к главному меню
+            await state.set_state(ShopState.MAIN)
+            await start_menu_with_counts(callback)
+
+        else:
+            # Для любого другого состояния - возвращаемся к главному меню
             await state.set_state(ShopState.MAIN)
             await start_menu_with_counts(callback)
 
@@ -3528,7 +3780,8 @@ async def category_callback(callback: CallbackQuery, state: FSMContext):
 
     # Обработка кнопки Make Preorder
     if data == "preorder":
-        await callback.message.answer("Please write to @fypacc")
+        await callback.message.answer("Please contact @fypacc 🥷")
+        await callback.answer()
         return
 
     # === Основные категории ===
@@ -3652,6 +3905,15 @@ async def handle_quantity_input(message: Message, state: FSMContext):
             await message.answer(f"❌ Not enough items in stock! Available: {available_count}, requested: {quantity}")
             return
 
+        # РЕЗЕРВИРУЕМ аккаунты на 10 минут
+        reserved_ids, error = await reserve_accounts(product_key, quantity)
+        if error or not reserved_ids:
+            await message.answer(f"❌ Failed to reserve accounts: {error or 'Unknown error'}")
+            return
+
+        # Сохраняем IDs зарезервированных аккаунтов в state
+        await state.update_data(reserved_account_ids=reserved_ids)
+
         # Получаем информацию о продукте из БД
         def get_product_info():
             try:
@@ -3698,44 +3960,37 @@ async def handle_quantity_input(message: Message, state: FSMContext):
             await state.clear()
             return
 
-        # Рассчитываем общую стоимость с учетом диапазонов цен
-        total_price = calculate_total_price(product_key, quantity)
+        # Рассчитываем общую стоимость (цена из БД * количество)
+        price_per_item = product_info['price']
+        total_price = price_per_item * quantity
 
         # Сохраняем количество в состоянии
         await state.update_data(quantity=quantity)
         await state.set_state(ShopState.PRODUCT)
 
-        # Определяем, нужна ли специальная кнопка заказа
-        is_special_order = False
-        is_preorder = False
-        button_text = "💳 Buy"
-        button_callback = f"buy_{product_key}"
-
-        if (product_key.startswith("ig_0") or product_key.startswith("tt_0")) and quantity >= 250:
-            # Специальный заказ для больших объемов 30 days
-            is_special_order = True
-            button_text = "🔥 Make Special Order"
-            button_callback = f"special_order_{product_key}"
-        elif product_key.startswith(("ig_3", "tt_3", "ig_7", "tt_7")):
-            # Предзаказ для 3 и 7 дней
-            is_preorder = True
-            button_text = "🚀 Make Preorder"
-            button_callback = f"preorder_{product_key}"
-
         # Показываем итоговое сообщение
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text=button_text, callback_data=button_callback)],
+                [InlineKeyboardButton(text="💳 Buy", callback_data=f"buy_{product_key}")],
                 [InlineKeyboardButton(text="⬅️ Back", callback_data="back")]
             ]
         )
 
-        message_text = (f"🛍 {product_info['title']}\n\n"
-                        f"{product_info['description']}\n\n"
+        message_text = (f"🥷 Confirmation\n\n"
+                        f"🔥 Aged Instagram Accounts\n\n"
                         f"📦 Quantity: {quantity} items\n"
-                        f"💰 Total price: {total_price:.2f} USDT")
+                        f"💰 Total price: {total_price:.2f} USDT\n\n"
+                        f"⏰ Reservation time: 10 minutes")
 
-        await message.answer(message_text, reply_markup=keyboard)
+        sent_message = await message.answer(message_text, reply_markup=keyboard)
+
+        # Запускаем задачу для отмены резервации через 1 минуту
+        asyncio.create_task(cancel_reservation_after_timeout(
+            user_id=message.from_user.id,
+            message_id=sent_message.message_id,
+            reserved_ids=reserved_ids,
+            state=state
+        ))
 
     except ValueError:
         # Отправляем сообщение с ошибкой неверного ввода
@@ -3763,33 +4018,23 @@ async def handle_other_messages(message: Message, state: FSMContext):
     # Устанавливаем состояние главного меню
     await state.set_state(ShopState.MAIN)
 
+    # Получаем количество доступных аккаунтов и текст приветствия из БД
     try:
-        categories = await get_all_categories()
-        logger.debug(f"Категории получены: {[cat.key for cat in categories]}")
+        available_count = await get_available_count("ig_0_eur")
     except Exception as e:
-        logger.error(f"Ошибка получения категорий: {e}")
-        await message.answer("❌ Error loading categories.")
-        return
+        logger.error(f"Ошибка получения количества: {e}")
+        available_count = 0
 
-    # Создаем кнопки с количеством товаров
-    buttons = []
-    for cat in categories:
-        total_count = await get_category_total_count(cat)
-        if total_count > 0:
-            button_text = f"{cat.name} ({total_count} items)"
-        else:
-            button_text = f"{cat.name} (0 Available)"
-        buttons.append([InlineKeyboardButton(text=button_text, callback_data=cat.key)])
+    # Получаем текст приветствия из БД
+    welcome_text = await get_welcome_text()
 
-    if not buttons:
-        await message.answer("❌ No categories available.")
-        return
-
-    # Добавляем кнопку Make Preorder
-    buttons.append([InlineKeyboardButton(text="🚀 Make Preorder", callback_data="preorder")])
+    buttons = [
+        [InlineKeyboardButton(text=f"🛒 Buy ({available_count} available)", callback_data="buy_start")],
+        [InlineKeyboardButton(text="🚀 Make Preorder", callback_data="preorder")],
+    ]
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
-    await message.answer("Please select the account category you want to purchase 🔥", reply_markup=keyboard)
+    await message.answer(welcome_text, reply_markup=keyboard)
 
 
 # === ПОКАЗ ПРОДУКТА ===
@@ -3855,9 +4100,9 @@ async def show_product(callback: CallbackQuery, product_key: str, state: FSMCont
         categories = await get_all_categories()
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text=cat.name, callback_data=cat.key)]
-                for cat in categories
-            ] + [[InlineKeyboardButton(text="🚀 Make Preorder", callback_data="preorder")]]
+                                [InlineKeyboardButton(text=cat.name, callback_data=cat.key)]
+                                for cat in categories
+                            ] + [[InlineKeyboardButton(text="🚀 Make Preorder", callback_data="preorder")]]
         )
         try:
             await callback.message.edit_text("Please select the account category you want to purchase 🔥",
@@ -3886,9 +4131,9 @@ async def show_product(callback: CallbackQuery, product_key: str, state: FSMCont
         categories = await get_all_categories()
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text=cat.name, callback_data=cat.key)]
-                for cat in categories
-            ] + [[InlineKeyboardButton(text="🚀 Make Preorder", callback_data="preorder")]]
+                                [InlineKeyboardButton(text=cat.name, callback_data=cat.key)]
+                                for cat in categories
+                            ] + [[InlineKeyboardButton(text="🚀 Make Preorder", callback_data="preorder")]]
         )
         try:
             await callback.message.edit_text("Please select the account category you want to purchase 🔥",
@@ -3925,11 +4170,38 @@ async def handle_buy(callback: CallbackQuery, data: str, state: FSMContext = Non
     product_key = data.replace("buy_", "", 1)
     print("PRODUCT KEY:", product_key)
 
-    # Получаем количество из состояния, если доступно
+    # Получаем количество и зарезервированные аккаунты из состояния
     quantity = 1  # по умолчанию
+    reserved_ids = []
     if state:
         state_data = await state.get_data()
         quantity = state_data.get("quantity", 1)
+        reserved_ids = state_data.get("reserved_account_ids", [])
+
+    # Проверяем, не истекла ли резервация (проверяем первый аккаунт)
+    if reserved_ids:
+        def check_reservation():
+            try:
+                account = pb.collection("accounts").get_one(reserved_ids[0])
+                if hasattr(account, 'reserved_until') and account.reserved_until:
+                    reserved_until_dt = datetime.fromisoformat(
+                        account.reserved_until.replace('Z', '+00:00').replace('+00:00', ''))
+                    return reserved_until_dt > datetime.now()
+                return False
+            except:
+                return False
+
+        reservation_valid = await asyncio.to_thread(check_reservation)
+        if not reservation_valid:
+            # Резервация истекла
+            await callback.message.edit_text(
+                "⏰ Reservation expired. Please try to purchase again.",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="🔄 Try Again", callback_data="buy_start")]
+                ])
+            )
+            await state.clear()
+            return
 
     # Получаем информацию о продукте из БД
     def get_product_price():
@@ -3968,6 +4240,26 @@ async def handle_buy(callback: CallbackQuery, data: str, state: FSMContext = Non
             await show_product(callback, product_key, state)
         return
 
+    # ПРОВЕРКА: убеждаемся что достаточно аккаунтов ПЕРЕД созданием инвойса
+    current_available = await get_available_count(product_key)
+    if current_available < quantity:
+        await callback.answer(
+            f"❌ Sorry! Only {current_available} accounts available now. Someone else just purchased some.",
+            show_alert=True
+        )
+        # Возвращаемся к вводу количества с обновленной информацией
+        if state:
+            message_text = f"""📦 We have {current_available} accounts available right now
+
+💬 Please enter the quantity you want to purchase
+
+⚡️ Accounts will be delivered immediately after payment!"""
+            try:
+                await callback.message.edit_text(message_text)
+            except:
+                pass
+        return
+
     total_price = price_per_item * quantity
 
     # Создание инвойса
@@ -3990,7 +4282,8 @@ async def handle_buy(callback: CallbackQuery, data: str, state: FSMContext = Non
         'first_name': callback.from_user.first_name,
         'last_name': callback.from_user.last_name,
         'price_per_item': price_per_item,
-        'total_price': total_price
+        'total_price': total_price,
+        'reserved_account_ids': reserved_ids
     }
 
     print(f"Saved order info for invoice {invoice.invoice_id}: {pending_orders[invoice.invoice_id]}")
@@ -4197,8 +4490,31 @@ async def handle_payment(invoice):
 
         print(f"Processing order: {product_key} x{quantity} for user {user_id}")
 
-        # Резервируем и доставляем аккаунты
-        account_data, error = await reserve_and_deliver_accounts(product_key, quantity, user_id)
+        # ДВОЙНАЯ ПРОВЕРКА: убеждаемся что аккаунты еще доступны перед обработкой
+        current_available = await get_available_count(product_key)
+        if current_available < quantity:
+            # Недостаточно аккаунтов - отправляем уведомление
+            error_message = f"""❌ We're sorry! 
+
+We couldn't complete your order because accounts ran out.
+
+📦 You ordered: {quantity} accounts
+📦 Available now: {current_available} accounts
+
+💰 Your payment will be refunded automatically.
+Please contact @fypacc for assistance."""
+
+            await safe_send_message(user_id, error_message)
+            logger.error(
+                f"Insufficient accounts for user {user_id}. Ordered: {quantity}, Available: {current_available}")
+
+            # Удаляем заказ из pending
+            del pending_orders[invoice.invoice_id]
+            return
+
+        # Резервируем и доставляем аккаунты (передаем зарезервированные IDs если есть)
+        reserved_ids = order.get('reserved_account_ids', [])
+        account_data, error = await reserve_and_deliver_accounts(product_key, quantity, user_id, reserved_ids)
 
         if error:
             await safe_send_message(user_id, f"❌ Error processing your order: {error}")
@@ -4218,7 +4534,7 @@ async def handle_payment(invoice):
             # Создаем txt файл с аккаунтами
             header_text = "Attention, log into your account only from the proxy of the country whose account you purchased.\nFormat\nlogin:password:email\n\n"
             file_content = header_text + "\n".join(account_data)
-            filename = f"{product_key}_{quantity}accounts.txt"
+            filename = f"instagram_accounts_{quantity}.txt"
 
             # Отправляем файл пользователю
             file_data = BufferedInputFile(
@@ -4227,16 +4543,10 @@ async def handle_payment(invoice):
             )
 
             try:
-                # Подтверждение оплаты
-                payment_success = await safe_send_message(user_id, f"✅ Invoice #{invoice.invoice_id} has been paid!")
-
-                # Получаем читаемое название продукта
-                product_display_name = await asyncio.to_thread(get_product_display_name, product_key)
-
                 document_success = await safe_send_document(
                     user_id,
                     document=file_data,
-                    caption=f"🎉 Your order is ready!\n📦 Product: {product_display_name}\n🔢 Quantity: {quantity} accounts\n\nThank you for your purchase!"
+                    caption=f"🎉 Your order is ready!\n📦 Product: Instagram Aged Accounts\n🔢 Quantity: {quantity} accounts\n\nThank you for your purchase!"
                 )
 
                 if document_success:
@@ -4263,22 +4573,20 @@ async def handle_payment(invoice):
 
         # Возвращаем пользователя к главному меню
         try:
-            categories = await get_all_categories()
+            available_count = await get_available_count("ig_0_eur")
 
-            buttons = []
-            for cat in categories:
-                total_count = await get_category_total_count(cat)
-                if total_count > 0:
-                    button_text = f"{cat.name} ({total_count} items)"
-                else:
-                    button_text = f"{cat.name} (0 Available)"
-                buttons.append([InlineKeyboardButton(text=button_text, callback_data=cat.key)])
+            # Получаем текст приветствия из БД
+            welcome_text = await get_welcome_text()
+            # Заменяем Welcome на Welcome back
+            welcome_text = welcome_text.replace("👋 Welcome!", "👋 Welcome back!")
 
-            if buttons:
-                keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
-                await safe_send_message(user_id, "Welcome back to the shop! Choose category:", reply_markup=keyboard)
-            else:
-                await safe_send_message(user_id, "❌ No categories available.")
+            buttons = [
+                [InlineKeyboardButton(text=f"🛒 Buy ({available_count} available)", callback_data="buy_start")],
+                [InlineKeyboardButton(text="🚀 Make Preorder", callback_data="preorder")],
+            ]
+
+            keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+            await safe_send_message(user_id, welcome_text, reply_markup=keyboard)
         except Exception as e:
             logger.error(f"Ошибка при возврате в главное меню после оплаты: {e}")
             await safe_send_message(user_id, "Payment confirmed! Use /start to return to the shop.")
@@ -4341,13 +4649,12 @@ async def handle_special_order(callback: CallbackQuery, data: str, state: FSMCon
 
     # Создаем сообщение для пересылки
 
-
     # Отправляем пользователю инструкции
     instructions_message = ("🔥 <b>Special Order Request Sent!</b>\n\n"
-                           f"📦 Product: {product_info['title'] if product_info else product_key}\n"
-                           f"🔢 Quantity: {quantity} accounts\n"
-                           f"💰 Total Price: {total_price:.2f} USDT\n\n"
-                           f"<i>💡 Large orders require manual processing for quality assurance.</i>")
+                            f"📦 Product: {product_info['title'] if product_info else product_key}\n"
+                            f"🔢 Quantity: {quantity} accounts\n"
+                            f"💰 Total Price: {total_price:.2f} USDT\n\n"
+                            f"<i>💡 Large orders require manual processing for quality assurance.</i>")
 
     # Отправляем пользователю инструкции
     await callback.message.answer(instructions_message, parse_mode="HTML")
@@ -4432,10 +4739,10 @@ async def handle_preorder(callback: CallbackQuery, data: str, state: FSMContext 
 
     # Отправляем пользователю инструкции
     instructions_message = ("🚀 <b>Preorder Request Sent!</b>\n\n"
-                           f"📦 Product: {product_info['title'] if product_info else product_key}\n"
-                           f"🔢 Quantity: {quantity} accounts\n"
-                           f"💰 Total Price: {total_price:.2f} USDT\n\n"
-                           f"<i>💡 Premium accounts require preparation time.</i>")
+                            f"📦 Product: {product_info['title'] if product_info else product_key}\n"
+                            f"🔢 Quantity: {quantity} accounts\n"
+                            f"💰 Total Price: {total_price:.2f} USDT\n\n"
+                            f"<i>💡 Premium accounts require preparation time.</i>")
 
     # Отправляем пользователю инструкции
     await callback.message.answer(instructions_message, parse_mode="HTML")
