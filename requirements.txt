@@ -5,7 +5,7 @@ aiogram==3.15.0
 pocketbase==0.12.1
 
 # Crypto Payment
-aiosend==3.0.4
+aiosend==2.1.2
 
 # Scheduling
 schedule==1.2.2
