@@ -1086,7 +1086,7 @@ async def safe_send_video(user_id: int, video_file_id: str, caption: str = "") -
 
 # === Инициализация ===
 
-cp = CryptoPay("REDACTED_REVOKED_TOKEN", TESTNET)
+cp = CryptoPay("REDACTED_REVOKED_TOKEN")
 bot = Bot("REDACTED_REVOKED_TOKEN")
 dp = Dispatcher()
 router = Router()
@@ -1107,6 +1107,7 @@ class ShopState(StatesGroup):
     REGION = State()
     QUANTITY_INPUT = State()
     PRODUCT = State()
+    IMPORT_CONFIRMATION = State()
 
 
 # === МОДЕЛИ (моделируем БД в памяти) ===
@@ -2843,7 +2844,7 @@ async def test_reactivation(message: Message):
 
 # === КОМАНДА ДЛЯ ИМПОРТА ТОВАРОВ ===
 @router.message(lambda message: message.text and message.text.lower() == "/import")
-async def handle_import_products(message: Message):
+async def handle_import_products(message: Message, state: FSMContext):
     """Импортирует товары из txt файлов (только для sansiry)"""
     username = message.from_user.username
     if not username:
@@ -2856,6 +2857,33 @@ async def handle_import_products(message: Message):
 
     # Автоматически регистрируем sansiry при использовании команды
     register_sansiry_chat_id(username.lower(), message.chat.id)
+
+    # Запрашиваем подтверждение
+    await state.set_state(ShopState.IMPORT_CONFIRMATION)
+    await message.answer(
+        "⚠️ Вы действительно хотите запустить импорт товаров?\n\n"
+        "Напишите <b>\"да\"</b> для подтверждения или что-то другое для отмены.",
+        parse_mode="HTML"
+    )
+
+
+@router.message(ShopState.IMPORT_CONFIRMATION)
+async def confirm_import(message: Message, state: FSMContext):
+    """Обрабатывает подтверждение импорта"""
+    username = message.from_user.username
+
+    if not username or username.lower() != "sansiry":
+        await show_main_menu_to_user(message)
+        await state.clear()
+        return
+
+    # Проверяем подтверждение
+    if message.text.lower().strip() != "да":
+        await message.answer("❌ Импорт отменен.")
+        await state.clear()
+        return
+
+    await state.clear()
 
     try:
         await message.answer("📦 Начинаю импорт товаров из txt файлов...")
@@ -4544,7 +4572,7 @@ Please contact @fypacc for assistance."""
             )
 
             # Создаем txt файл с аккаунтами
-            header_text = "Recommended warmup: 7 days\nRecommended proxies to use: HQ mobile 4g/5g\n\nFormat\nlogin:password:email:emailpassword:2fa\n\nTo find out your 2fa code, go to https://2fa.live/ and paste your key\n\n"
+            header_text = "Recommended warmup: 7 days\nRecommended proxies to use: HQ mobile 4g/5g\n\nFormat\nlogin:password:email:emailpassword:2fa\nTo find out your 2fa code, go to https://2fa.live/ and paste your key\n\n"
             file_content = header_text + "\n".join(account_data)
             filename = f"instagram_accounts_{quantity}.txt"
 
