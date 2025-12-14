@@ -1086,7 +1086,7 @@ async def safe_send_video(user_id: int, video_file_id: str, caption: str = "") -
 
 # === Инициализация ===
 
-cp = CryptoPay("REDACTED_REVOKED_TOKEN")
+cp = CryptoPay("REDACTED_REVOKED_TOKEN", TESTNET)
 bot = Bot("REDACTED_REVOKED_TOKEN")
 dp = Dispatcher()
 router = Router()
@@ -4544,7 +4544,7 @@ Please contact @fypacc for assistance."""
             )
 
             # Создаем txt файл с аккаунтами
-            header_text = "Recommended warmup: 7 days\nRecommended proxies to use: HQ mobile 4g/5g\n\nFormat\nlogin:password:email:emailpassword:2fa\n\n"
+            header_text = "Recommended warmup: 7 days\nRecommended proxies to use: HQ mobile 4g/5g\n\nFormat\nlogin:password:email:emailpassword:2fa\n\nTo find out your 2fa code, go to https://2fa.live/ and paste your key\n\n"
             file_content = header_text + "\n".join(account_data)
             filename = f"instagram_accounts_{quantity}.txt"
 
