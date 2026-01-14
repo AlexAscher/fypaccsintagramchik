@@ -1,0 +1,152 @@
+ДЕТАЛЬНЫЙ ОТЧЕТ ИМПОРТА ТОВАРОВ
+Дата: 2026-01-02 04:41:20
+============================================================
+
+ОБЩАЯ СТАТИСТИКА:
+- Файлов найдено: 14
+- Файлов обработано: 14
+- Всего строк: 102
+- Добавлено новых: 0
+- Пропущено (дубли): 102
+- Ошибок: 0
+
+ДЕТАЛИ ПО ФАЙЛАМ:
+============================================================
+
+ФАЙЛ: ig_0_eur.txt
+Продукт: ig_0_eur
+Статистика: Всего=99, Добавлено=0, Пропущено=99, Ошибок=0
+----------------------------------------
+⚠️ Строка 1: 'ciprianoanabela3:X3RpleqMoNXF:kaetral05@gmail.com:lfrevcyguwgmdvtq:JK4JFDYKI3A6O4L42CBUALKISYW6CT5W' уже существует
+⚠️ Строка 2: 'savana_mantovani9:zDqGAYtQoGk:michelkachel05@gmail.com:nkojpetyskgiysxy:SQTOTWG7NBYNDYDMVMH77M5Q6C2DEJYO' уже существует
+⚠️ Строка 3: 'fdpgunstrick:xExUGnM0yyI:fdpgunstrick@gmail.com:ycwwuidojexvhoez:YN5RWVQAZ2M56VKRDSZHJCZXBWM6YCKV' уже существует
+⚠️ Строка 4: 'bernadette_fagundes5:o0NhKxNKdPx1:hsjajzjhhsajzj@gmail.com:jgholasuhaiketie:I6V2XTLIEC6J6TNZDUTIADP3JPXONHFD' уже существует
+⚠️ Строка 5: 'corita_benedito7:FNXCG05r5S:Aaruhijais021@gmail.com:ywncrftysvojalbn:KRLYCKDMK4YTJB7AFBJWKKHTNMYYGIYT' уже существует
+⚠️ Строка 6: 'de.luara6:X0zwTzpFGm:Hdnjhhbbggdgfhtbd@gmail.com:paillkbfkihcwhcq:6GUKIGYUC4AWP3EVG5SM7UCKYU7WTFIN' уже существует
+⚠️ Строка 7: 'dornelles.darlene2:8wp3FHX5aQ:5387951814snglkrtcu@gmail.com:ctftyhnqbnrzaehk:G3Y2B2RJRLD53K74L6YXCZFDYFRUQTSO' уже существует
+⚠️ Строка 8: 'francielleluiz6:K2kC6CzXPxl:Sivan1234luiz@gmail.com:wjofudrlfbxllhyo:DQN2DQORCGDNRUPVVXLYDHG25V5PQ5JU' уже существует
+⚠️ Строка 9: 'estteisi.clinton:AlbvQ3wEvZZ:Estteisi.clinton@gmail.com:vuoydeqzpnqkffoh:NMUQ4R6T7AJY53ODPIMIHGF67BA7B2V6' уже существует
+⚠️ Строка 10: 'negreiros.giuliana4:JFBBjTl7xi:12anakrunic56@gmail.com:qeqjnezacobznenx:TDTG2PCR2UDRSY7NES7AIIE56F5SOQ3J' уже существует
+⚠️ Строка 11: 'carisiamatias6:PJvkTmAf8vB:Zxcvbnkkzmmdkd@gmail.com:nnedcxxpaakgavbp:YVM5RDNWQS4QXFDWWZ5NA3KCA24ZWEOG' уже существует
+⚠️ Строка 12: 'kimselelector:TfLEKPEDRi:kimselelector@gmail.com:rsgozwtuahbvlcfq:E5JWCISC3M3SGPOA63GHO5EPX2QAYZ5U' уже существует
+⚠️ Строка 13: 'clementino_ranielle3:tXZ98U0D4o:fontesgardenia55@gmail.com:grfiaujrdapygjnm:PARXUBARJ62WPNOHJOJNM6ITBU4AMHHN' уже существует
+⚠️ Строка 14: 'juliaoneli:Af9rARSrynn:semushkinaeva.21@gmail.com:aobvttnvxtuhfdpw:IYK76MCQX6LYE2D6AAQTQLDT7NTERM2P' уже существует
+⚠️ Строка 15: 'jordao.nivia7:zgtu81YoxwG:Romanov3h9@gmail.com:vepctnovqyvupotw:GQYGPFXWP3IYEGFW6DOSB3TEHNNTIIAL' уже существует
+⚠️ Строка 16: 'sacramentoarquimina2:pxQbmxKy4zTf:Tcylface@gmail.com:tqctiipfmuyzrbcn:QINAAYQVCNGLSUOMGROAAY5NGPT3CYMP' уже существует
+⚠️ Строка 17: 'darcy.ribeiro2:cti3DhRrl9f:Shamarismyfuture@gmail.com:keongoudiuzolzco:X2KXNIKSUEJMW54O477UM6H4U6TB7SGA' уже существует
+⚠️ Строка 18: 'hagatawagner1:xWrzJBbVlN:fhkkydddc@gmail.com:livwfmdiprfqzlax:IFBCIWPIGBGOC6JKJOGCLK76FBSAJBTI' уже существует
+⚠️ Строка 19: 'benigna_beserra:JDQ1QFfg1MP:lolppppoooh@gmail.com:sfowdtgyfqfkeaws:G2NZJFFW5YE4ZQIZBUREWEFUQPEFP2YY' уже существует
+⚠️ Строка 20: 'henriques_stephany7:kG8OQHvMGH:Kduxudozbd@gmail.com:tucdzahhnpvdvodv:SNENXAXIHBEJAI6OXQGJMPPY5KCHM2YB' уже существует
+⚠️ Строка 21: 'belina_roberto6:tVpmsRsk7T:avdulodzhanov.ybra@gmail.com:yftszocuelqftdzw:H666M3KL4ZAMXI525C3BAR22SI6UOSTP' уже существует
+⚠️ Строка 22: 'cordeliacolares_5:zvZ4eeYub2ti:jybvhsowyowdxffaag@gmail.com:xlempffdwfhlbjwt:M7AE4JNFONCN2ON3MG6EGK66HS7XEFET' уже существует
+⚠️ Строка 23: 'messias_carela7:6Jsps2a9ESF5z3jR:Sqfmxpmc@gmail.com:nagmzqjbsnajsvmy:7YO75EB7SWWFB4JSPCQ4E4S3APGFTBKF' уже существует
+⚠️ Строка 24: 'editede_9:QJn0tb5vL2j:Vasily.zccxxokszlwwel@gmail.com:srelvbmjmfbjzdjl:TLSJYMQIYXY2R3NBAE4LQ5LERPT5UBI2' уже существует
+⚠️ Строка 25: 'de_stefany8:3LqUhRslU1Zk:sofiadwidamayanti50@gmail.com:xjfqxcxlarlfoyxb:5FJHFWIT5X4C6XDZ6KQB2G2ROQULMZKW' уже существует
+⚠️ Строка 26: 'barrosoalexandra8:HJsGvZUNx0pT:fvudnyv@gmail.com:ruyxjqlphyvkydbq:JK3FDBX6TE5CYO2MHX3NI2I2KHQWBRMS' уже существует
+⚠️ Строка 27: 'moemaschulz6:Sx07rYzLpWp5:tara56hogan@gmail.com:osoiqpuvpkvqgctq:RQRXB2OJ5JB2NZABJ5YSNGOHIANF7V4R' уже существует
+⚠️ Строка 28: 'thome.muriel9:lZH8fi6V4AGE:hardvinlaura.984@gmail.com:gahxuoonfzthjwgr:QDIODQ4D7BANI4Y3J2R52MKLM6KHFYA4' уже существует
+⚠️ Строка 29: 'juciele.negrao5:5mEMDq3fbSnG:Laraibalibut@gmail.com:raiztjswhbnytpog:BXMDVDKAXULS7Y7WK5PNW4VJG7EQZOZ7' уже существует
+⚠️ Строка 30: 'araujo.alva9:4RyoqvA3eYr7:ardirinapryan@gmail.com:edibxedvchbhhilo:2EANVSYZTVJDRSYM2LTRPJZDMYHUUSET' уже существует
+⚠️ Строка 31: 'georgia_pinheiro2:936OHSgt3B:Hamzadftre@gmail.com:wgxtdubqmrodljbe:2M3E7ORRDQIDSE7N3W3TZ4DPDF34W4LB' уже существует
+⚠️ Строка 32: 'delfina_de3:KbRQyQgseuc:maya.t.stringer@gmail.com:gvozibjwqhplvufd:24JOWWWDQ3SCGMUAYYACLN7DUDTFPNN4' уже существует
+⚠️ Строка 33: 'donizettibelara7:qjFHk4HPSaL:Fsfywhsy@gmail.com:dotivkltxwucmuwg:ASTIKFRWOTJ7VSMUVLPYF54N774IAWKF' уже существует
+⚠️ Строка 34: 'vilasgabriely1:jvoBVCrEasd9:bernaacikgoz64@gmail.com:djvkzomacvoqtayu:736APJD4LHPLYKCZLYMB5KIQHKFB5DEN' уже существует
+⚠️ Строка 35: 'acosta.cintia3:S2OgHWdZKCV:topsonsharyu@gmail.com:dzshvizjsteymtdf:HCOECRSXNN7TJKOGF2XGTF7PGJGULSOF' уже существует
+⚠️ Строка 36: 'henrique_persia6:xjjwxgXr3ULm:woodlandmiddleschoolnews@gmail.com:zaexnptonglbcefg:7L2R7WZU5HLBATPD5LULWG663TVB2HTF' уже существует
+⚠️ Строка 37: 'virginiasobral6:l7nR3Fztb45a:faridlblack99@gmail.com:nzpbaymwonlfmjqd:R5FL7JNZKF3QH7WZWKHK5R2GG2HI7VJU' уже существует
+⚠️ Строка 38: 'nayana_valerio4:ry5zdhCiqv:jacksonvillehangz904@gmail.com:hanvxuxjnmqfekct:HGUXKMJQH3USVCR5PQCT2BBJHDPHQTAQ' уже существует
+⚠️ Строка 39: 'otilia_batista5:YwZtzEKy1kE8:dnscggv@gmail.com:xsnvlliwjtnpglfv:W5ZQGSGEAAR5GHGQMVO6W5Q62G7KIE65' уже существует
+⚠️ Строка 40: 'narcisocinthia5:OgUIPh3vWhi:Hasemhussini77@gmail.com:skaoizpumxkwayfw:HMBH6DFPXOXWCJD6VSPYMBV4A42WP4SZ' уже существует
+⚠️ Строка 41: 'de_franca5:Sf3pKc3CkVOM:skxkdjdjxjxjcj@gmail.com:bolhbetwuoufdzof:YGSDBXRDVDXM6RHIHNWPMDMGDE5XYAX2' уже существует
+⚠️ Строка 42: 'da.jacinta1:Jr8mV2bDLK:Mahtabbbbbbb7@gmail.com:amnzjhiomibrqcwp:PEU4DWW6TZ63FATRMFY72YYRLEE35JMN' уже существует
+⚠️ Строка 43: 'sonjamonte_9:3yNgcDNkLzry:Hanudenenuler@gmail.com:eyrlufzqgslptfxj:BVRNRKF4CBJGFDYXSKP662H76BTL7ULW' уже существует
+⚠️ Строка 44: 'rabellorenata3:QGiwLBf8Db:isabellaparalskzda2003@gmail.com:cxmgqwkvoybamkqn:W3EC4WX7Y6ZCRSEUU5ECDQPIH6NGEGPP' уже существует
+⚠️ Строка 45: 'melciaresende5:Q5XQjAIeNIQa:meerashah1511@gmail.com:zepdxoctwqlvmlwe:KC4HMX26UPBNMCY2IHOJOZCNCJSA3CKO' уже существует
+⚠️ Строка 46: 'klein_luciana1:und593UjW78:liyaniaqilah@gmail.com:slrgoktbsmnzblex:AJWOB3GGOJNGSWV5M6C6GML3AKSOU3US' уже существует
+⚠️ Строка 47: 'carinamaral2:9vsVQ6M5KvS:ajgbadrian1997@gmail.com:uwqalxxycpmqbomz:DYHUPF7ED3SSMQXLFRYYACTDDSUZI4P5' уже существует
+⚠️ Строка 48: 'fraga_andria6:wJId50iirW:Mris161oa@gmail.com:kmwtbfaffbsmvyyc:AOL44AWHQLJRFK373P5CELH353WELNWZ' уже существует
+⚠️ Строка 49: 'lucelia_rezende2:dEqeS9ADrQH:asdfkffk12@gmail.com:xahhaxettlhikpru:3HNEOEMCY2P2J3W3MXOT7PP7XZVCGWXM' уже существует
+⚠️ Строка 50: 'ceciliaschmitz1:p2e0ej97yr:aghxvbxv@gmail.com:jlysqyunggkuspky:3BTGGFPO674E565UDDY7FP56W65VVJXP' уже существует
+... и еще 49 записей
+
+
+ФАЙЛ: ig_0_us.txt
+Продукт: ig_0_us
+Статистика: Всего=3, Добавлено=0, Пропущено=3, Ошибок=0
+----------------------------------------
+⚠️ Строка 1: 'poprobovat:choto' уже существует
+⚠️ Строка 2: 'poprobovat1:choto1' уже существует
+⚠️ Строка 3: 'poprobovat2:choto2' уже существует
+
+
+ФАЙЛ: ig_3_eur.txt
+Продукт: ig_3_eur
+Статистика: Всего=0, Добавлено=0, Пропущено=0, Ошибок=0
+----------------------------------------
+
+
+ФАЙЛ: ig_3_us.txt
+Продукт: ig_3_us
+Статистика: Всего=0, Добавлено=0, Пропущено=0, Ошибок=0
+----------------------------------------
+
+
+ФАЙЛ: ig_7_eur.txt
+Продукт: ig_7_eur
+Статистика: Всего=0, Добавлено=0, Пропущено=0, Ошибок=0
+----------------------------------------
+
+
+ФАЙЛ: ig_7_us.txt
+Продукт: ig_7_us
+Статистика: Всего=0, Добавлено=0, Пропущено=0, Ошибок=0
+----------------------------------------
+
+
+ФАЙЛ: snap_0_eur.txt
+Продукт: snap_0_eur
+Статистика: Всего=0, Добавлено=0, Пропущено=0, Ошибок=0
+----------------------------------------
+
+
+ФАЙЛ: snap_0_us.txt
+Продукт: snap_0_us
+Статистика: Всего=0, Добавлено=0, Пропущено=0, Ошибок=0
+----------------------------------------
+
+
+ФАЙЛ: tt_0_eur.txt
+Продукт: tt_0_eur
+Статистика: Всего=0, Добавлено=0, Пропущено=0, Ошибок=0
+----------------------------------------
+
+
+ФАЙЛ: tt_0_us.txt
+Продукт: tt_0_us
+Статистика: Всего=0, Добавлено=0, Пропущено=0, Ошибок=0
+----------------------------------------
+
+
+ФАЙЛ: tt_3_eur.txt
+Продукт: tt_3_eur
+Статистика: Всего=0, Добавлено=0, Пропущено=0, Ошибок=0
+----------------------------------------
+
+
+ФАЙЛ: tt_3_us.txt
+Продукт: tt_3_us
+Статистика: Всего=0, Добавлено=0, Пропущено=0, Ошибок=0
+----------------------------------------
+
+
+ФАЙЛ: tt_7_eur.txt
+Продукт: tt_7_eur
+Статистика: Всего=0, Добавлено=0, Пропущено=0, Ошибок=0
+----------------------------------------
+
+
+ФАЙЛ: tt_7_us.txt
+Продукт: tt_7_us
+Статистика: Всего=0, Добавлено=0, Пропущено=0, Ошибок=0
+----------------------------------------
+

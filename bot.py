@@ -1086,7 +1086,7 @@ async def safe_send_video(user_id: int, video_file_id: str, caption: str = "") -
 
 # === Инициализация ===
 
-cp = CryptoPay("REDACTED_REVOKED_TOKEN")
+cp = CryptoPay("REDACTED_REVOKED_TOKEN", TESTNET)
 bot = Bot("REDACTED_REVOKED_TOKEN")
 dp = Dispatcher()
 router = Router()
@@ -1586,10 +1586,12 @@ async def release_reservation(account_ids: list[str]) -> None:
 
 async def show_main_menu_to_user(message: Message):
     """Показывает главное меню пользователю"""
-    available_count = await get_available_count("ig_0_eur")
+    ig_count = await get_available_count("ig_0_eur")
+    tw_count = await get_available_count("ig_0_us")
     welcome_text = await get_welcome_text()
     buttons = [
-        [InlineKeyboardButton(text=f"🛒 Buy ({available_count} available)", callback_data="buy_start")],
+        [InlineKeyboardButton(text=f"🛒 Buy Instagram ({ig_count} available)", callback_data="buy_start")],
+        [InlineKeyboardButton(text=f"📱 Buy Twitter ({tw_count} available)", callback_data="buy_twitter")],
         [InlineKeyboardButton(text="🚀 Make Preorder", callback_data="preorder")],
     ]
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
@@ -2087,16 +2089,19 @@ async def start(message: Message, state: FSMContext):
 
     # Получаем количество доступных аккаунтов и текст приветствия из БД
     try:
-        available_count = await get_available_count("ig_0_eur")
+        ig_count = await get_available_count("ig_0_eur")
+        tw_count = await get_available_count("ig_0_us")
     except Exception as e:
         logger.error(f"Ошибка получения количества: {e}")
-        available_count = 0
+        ig_count = 0
+        tw_count = 0
 
     # Получаем текст приветствия из БД
     welcome_text = await get_welcome_text()
 
     buttons = [
-        [InlineKeyboardButton(text=f"🛒 Buy ({available_count} available)", callback_data="buy_start")],
+        [InlineKeyboardButton(text=f"🛒 Buy Instagram ({ig_count} available)", callback_data="buy_start")],
+        [InlineKeyboardButton(text=f"📱 Buy Twitter ({tw_count} available)", callback_data="buy_twitter")],
         [InlineKeyboardButton(text="🚀 Make Preorder", callback_data="preorder")],
     ]
 
@@ -2184,16 +2189,19 @@ async def show_menu(message: Message, state: FSMContext):
 
     # Получаем количество доступных аккаунтов и текст приветствия из БД
     try:
-        available_count = await get_available_count("ig_0_eur")
+        ig_count = await get_available_count("ig_0_eur")
+        tw_count = await get_available_count("ig_0_us")
     except Exception as e:
         logger.error(f"Ошибка получения количества: {e}")
-        available_count = 0
+        ig_count = 0
+        tw_count = 0
 
     # Получаем текст приветствия из БД
     welcome_text = await get_welcome_text()
 
     buttons = [
-        [InlineKeyboardButton(text=f"🛒 Buy ({available_count} available)", callback_data="buy_start")],
+        [InlineKeyboardButton(text=f"🛒 Buy Instagram ({ig_count} available)", callback_data="buy_start")],
+        [InlineKeyboardButton(text=f"📱 Buy Twitter ({tw_count} available)", callback_data="buy_twitter")],
         [InlineKeyboardButton(text="🚀 Make Preorder", callback_data="preorder")],
     ]
 
@@ -3614,16 +3622,19 @@ async def start_menu_with_counts(callback: CallbackQuery):
     """Создает главное меню"""
     # Получаем количество доступных аккаунтов и текст приветствия из БД
     try:
-        available_count = await get_available_count("ig_0_eur")
+        ig_count = await get_available_count("ig_0_eur")
+        tw_count = await get_available_count("ig_0_us")
     except Exception as e:
         logger.error(f"Ошибка получения количества: {e}")
-        available_count = 0
+        ig_count = 0
+        tw_count = 0
 
     # Получаем текст приветствия из БД
     welcome_text = await get_welcome_text()
 
     buttons = [
-        [InlineKeyboardButton(text=f"🛒 Buy ({available_count} available)", callback_data="buy_start")],
+        [InlineKeyboardButton(text=f"🛒 Buy Instagram ({ig_count} available)", callback_data="buy_start")],
+        [InlineKeyboardButton(text=f"📱 Buy Twitter ({tw_count} available)", callback_data="buy_twitter")],
         [InlineKeyboardButton(text="🚀 Make Preorder", callback_data="preorder")],
     ]
 
@@ -3724,7 +3735,7 @@ async def category_callback(callback: CallbackQuery, state: FSMContext):
 
     data = callback.data
 
-    # === Обработка кнопки Buy ===
+    # === Обработка кнопки Buy Instagram ===
     if data == "buy_start":
         product_key = "ig_0_eur"
 
@@ -3732,7 +3743,9 @@ async def category_callback(callback: CallbackQuery, state: FSMContext):
         try:
             available_count = await get_available_count(product_key)
 
-            message_text = f"""📦 We have {available_count} accounts available right now
+            message_text = f"""🔥 Aged Instagram Accounts
+
+📦 We have {available_count} accounts available right now
 
 💬 Please enter the quantity you want to purchase
 
@@ -3743,7 +3756,49 @@ async def category_callback(callback: CallbackQuery, state: FSMContext):
             # Переходим в режим ввода количества
             await state.set_state(ShopState.QUANTITY_INPUT)
             await state.update_data(
-                product=product_key
+                product=product_key,
+                product_type="instagram"
+            )
+
+            # Запускаем фоновое обновление счетчика каждую минуту
+            asyncio.create_task(update_available_count_live(
+                user_id=callback.from_user.id,
+                message_id=edited_msg.message_id,
+                product_key=product_key,
+                state=state
+            ))
+
+            await callback.answer()
+            return
+
+        except Exception as e:
+            logger.error(f"Ошибка при обработке Buy Instagram: {e}")
+            await callback.answer("❌ Error loading product info", show_alert=True)
+            return
+
+    # === Обработка кнопки Buy Twitter ===
+    if data == "buy_twitter":
+        product_key = "ig_0_us"
+
+        # Получаем количество доступных аккаунтов
+        try:
+            available_count = await get_available_count(product_key)
+
+            message_text = f"""🔥 Aged Twitter Accounts
+
+📦 We have {available_count} accounts available right now
+
+💬 Please enter the quantity you want to purchase
+
+⚡️ Accounts will be delivered immediately after payment!"""
+
+            edited_msg = await callback.message.edit_text(message_text)
+
+            # Переходим в режим ввода количества
+            await state.set_state(ShopState.QUANTITY_INPUT)
+            await state.update_data(
+                product=product_key,
+                product_type="twitter"
             )
 
             # Запускаем фоновое обновление счетчика каждую минуту
@@ -3778,13 +3833,23 @@ async def category_callback(callback: CallbackQuery, state: FSMContext):
             if reserved_ids:
                 await release_reservation(reserved_ids)
 
-            # Возвращаемся к сообщению о вводе количества
-            product_key = "ig_0_eur"
+            # Получаем тип продукта из state
+            product_key = state_data.get("product", "ig_0_eur")
+            product_type = state_data.get("product_type", "instagram")
+
             await state.set_state(ShopState.QUANTITY_INPUT)
 
             available_count = await get_available_count(product_key)
 
-            message_text = f"""📦 We have {available_count} accounts available right now
+            # Выбираем название продукта в зависимости от типа
+            if product_type == "twitter":
+                product_name = "🔥 Aged Twitter Accounts"
+            else:
+                product_name = "🔥 Aged Instagram Accounts"
+
+            message_text = f"""{product_name}
+
+📦 We have {available_count} accounts available right now
 
 💬 Please enter the quantity you want to purchase
 
@@ -4008,6 +4073,13 @@ async def handle_quantity_input(message: Message, state: FSMContext):
         await state.update_data(quantity=quantity)
         await state.set_state(ShopState.PRODUCT)
 
+        # Определяем название продукта в зависимости от типа
+        product_type = data.get("product_type", "instagram")
+        if product_type == "twitter":
+            product_name = "🔥 Aged Twitter Accounts"
+        else:
+            product_name = "🔥 Aged Instagram Accounts"
+
         # Показываем итоговое сообщение
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
@@ -4017,7 +4089,7 @@ async def handle_quantity_input(message: Message, state: FSMContext):
         )
 
         message_text = (f"🥷 Confirmation\n\n"
-                        f"🔥 Aged Instagram Accounts\n\n"
+                        f"{product_name}\n\n"
                         f"📦 Quantity: {quantity} items\n"
                         f"💰 Total price: {total_price:.2f} USDT\n\n"
                         f"⏰ Reservation time: 10 minutes")
@@ -4060,16 +4132,19 @@ async def handle_other_messages(message: Message, state: FSMContext):
 
     # Получаем количество доступных аккаунтов и текст приветствия из БД
     try:
-        available_count = await get_available_count("ig_0_eur")
+        ig_count = await get_available_count("ig_0_eur")
+        tw_count = await get_available_count("ig_0_us")
     except Exception as e:
         logger.error(f"Ошибка получения количества: {e}")
-        available_count = 0
+        ig_count = 0
+        tw_count = 0
 
     # Получаем текст приветствия из БД
     welcome_text = await get_welcome_text()
 
     buttons = [
-        [InlineKeyboardButton(text=f"🛒 Buy ({available_count} available)", callback_data="buy_start")],
+        [InlineKeyboardButton(text=f"🛒 Buy Instagram ({ig_count} available)", callback_data="buy_start")],
+        [InlineKeyboardButton(text=f"📱 Buy Twitter ({tw_count} available)", callback_data="buy_twitter")],
         [InlineKeyboardButton(text="🚀 Make Preorder", callback_data="preorder")],
     ]
 
@@ -4613,7 +4688,8 @@ Please contact @fypacc for assistance."""
 
         # Возвращаем пользователя к главному меню
         try:
-            available_count = await get_available_count("ig_0_eur")
+            ig_count = await get_available_count("ig_0_eur")
+            tw_count = await get_available_count("ig_0_us")
 
             # Получаем текст приветствия из БД
             welcome_text = await get_welcome_text()
@@ -4621,7 +4697,8 @@ Please contact @fypacc for assistance."""
             welcome_text = welcome_text.replace("👋 Welcome!", "👋 Welcome back!")
 
             buttons = [
-                [InlineKeyboardButton(text=f"🛒 Buy ({available_count} available)", callback_data="buy_start")],
+                [InlineKeyboardButton(text=f"🛒 Buy Instagram ({ig_count} available)", callback_data="buy_start")],
+                [InlineKeyboardButton(text=f"📱 Buy Twitter ({tw_count} available)", callback_data="buy_twitter")],
                 [InlineKeyboardButton(text="🚀 Make Preorder", callback_data="preorder")],
             ]
 
