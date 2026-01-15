@@ -4418,7 +4418,7 @@ async def handle_buy(callback: CallbackQuery, data: str, state: FSMContext = Non
 
     # Send additional message with crypto wallet addresses
     crypto_addresses_text = (
-        "✅ Or pay to one of these addresses and message me:\n\n"
+        "✅ Or pay to one of these addresses and message @fypacc:\n\n"
         "TRC20\n"
         "TSxwAnKNThBg9QFV8gHtWMErca7rSEWXpU\n\n"
         "BEP20\n"
