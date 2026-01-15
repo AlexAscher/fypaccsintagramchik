@@ -1086,7 +1086,7 @@ async def safe_send_video(user_id: int, video_file_id: str, caption: str = "") -
 
 # === Инициализация ===
 
-cp = CryptoPay("REDACTED_REVOKED_TOKEN", TESTNET)
+cp = CryptoPay("REDACTED_REVOKED_TOKEN")
 bot = Bot("REDACTED_REVOKED_TOKEN")
 dp = Dispatcher()
 router = Router()
@@ -4415,6 +4415,21 @@ async def handle_buy(callback: CallbackQuery, data: str, state: FSMContext = Non
         await callback.message.edit_text(f"💳 Pay via the link:\n{invoice.bot_invoice_url}", reply_markup=keyboard)
     except TelegramBadRequest:
         pass  # Message is not modified
+
+    # Send additional message with crypto wallet addresses
+    crypto_addresses_text = (
+        "✅ Or pay to one of these addresses and message me:\n\n"
+        "TRC20\n"
+        "TSxwAnKNThBg9QFV8gHtWMErca7rSEWXpU\n\n"
+        "BEP20\n"
+        "0xe0f53e04405f3221579b19748d0b8cc2ba81cbf8\n\n"
+        "ERC20\n"
+        "0xe0f53e04405f3221579b19748d0b8cc2ba81cbf8\n\n"
+        "LTC\n"
+        "ltc1q32yqn458wfsqrwgpplm6rfrg7xqafg2juye44w"
+    )
+    await callback.message.answer(crypto_addresses_text)
+
     await callback.answer()
 
     # Мониторинг оплаты будет обрабатываться через webhook/polling декоратор
