@@ -1086,8 +1086,8 @@ async def safe_send_video(user_id: int, video_file_id: str, caption: str = "") -
 
 
 # === Инициализация ===
-cp = CryptoPay("REDACTED_REVOKED_TOKEN")
-bot = Bot("REDACTED_REVOKED_TOKEN")
+cp = CryptoPay(os.environ["CRYPTOBOT_API_TOKEN"])
+bot = Bot(os.environ["BOT_TOKEN"])
 dp = Dispatcher()
 router = Router()
 dp.include_router(router)
